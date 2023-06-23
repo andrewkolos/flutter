@@ -1033,6 +1033,7 @@ class FlutterPlugin implements Plugin<Project> {
                 }
             }
             String variantBuildMode = buildModeFor(variant.buildType)
+            String flavorValue = variant.getFlavorName()
             String taskName = toCamelCase(["compile", FLUTTER_BUILD_PREFIX, variant.name])
             // Be careful when configuring task below, Groovy has bizarre
             // scoping rules: writing `verbose isVerbose()` means calling
@@ -1068,6 +1069,7 @@ class FlutterPlugin implements Plugin<Project> {
                 codeSizeDirectory codeSizeDirectoryValue
                 deferredComponents deferredComponentsValue
                 validateDeferredComponents validateDeferredComponentsValue
+                flavor flavorValue
                 doLast {
                     project.exec {
                         if (Os.isFamily(Os.FAMILY_WINDOWS)) {
@@ -1325,6 +1327,8 @@ abstract class BaseFlutterTask extends DefaultTask {
     Boolean deferredComponents
     @Optional @Input
     Boolean validateDeferredComponents
+    @Optional @Input
+    String flavor
 
     @OutputFiles
     FileCollection getDependenciesFiles() {
@@ -1372,6 +1376,7 @@ abstract class BaseFlutterTask extends DefaultTask {
             }
             args "assemble"
             args "--no-version-check"
+            args "--flavor", "${flavor}"
             args "--depfile", "${intermediateDir}/flutter_build.d"
             args "--output", "${intermediateDir}"
             if (performanceMeasurementFile != null) {
@@ -1404,6 +1409,9 @@ abstract class BaseFlutterTask extends DefaultTask {
             }
             if (codeSizeDirectory != null) {
                 args "-dCodeSizeDirectory=${codeSizeDirectory}"
+            }
+            if (flavor != null) {
+                args "-dFlavor=${flavor}"
             }
             if (extraGenSnapshotOptions != null) {
                 args "--ExtraGenSnapshotOptions=${extraGenSnapshotOptions}"

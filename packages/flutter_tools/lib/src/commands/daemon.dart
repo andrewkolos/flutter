@@ -511,6 +511,7 @@ class AppDomain extends Domain {
     bool machine = true,
     String? userIdentifier,
     bool enableDevTools = true,
+    String? flavor,
   }) async {
     if (!await device.supportsRuntimeMode(options.buildInfo.mode)) {
       throw Exception(
@@ -561,6 +562,7 @@ class AppDomain extends Domain {
         multidexEnabled: multidexEnabled,
         hostIsIde: true,
         machine: machine,
+        flavor: flavor,
       );
     } else {
       runner = ColdRunner(

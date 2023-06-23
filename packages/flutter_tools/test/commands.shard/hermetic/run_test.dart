@@ -1525,6 +1525,7 @@ class CapturingAppDomain extends AppDomain {
     bool machine = true,
     String? userIdentifier,
     bool enableDevTools = true,
+    String? flavor,
   }) async {
     this.multidexEnabled = multidexEnabled;
     this.userIdentifier = userIdentifier;

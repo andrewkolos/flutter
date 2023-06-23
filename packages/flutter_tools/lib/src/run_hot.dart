@@ -94,6 +94,7 @@ class HotRunner extends ResidentRunner {
     ReloadSourcesHelper reloadSourcesHelper = defaultReloadSourcesHelper,
     ReassembleHelper reassembleHelper = _defaultReassembleHelper,
     NativeAssetsBuildRunner? buildRunner,
+    this.flavor,
   }) : _stopwatchFactory = stopwatchFactory,
        _reloadSourcesHelper = reloadSourcesHelper,
        _reassembleHelper = reassembleHelper,
@@ -136,6 +137,8 @@ class HotRunner extends ResidentRunner {
   bool? _emulator;
 
   NativeAssetsBuildRunner? _buildRunner;
+
+  String? flavor;
 
   Future<void> _calculateTargetPlatform() async {
     if (_targetPlatform != null) {
@@ -476,7 +479,10 @@ class HotRunner extends ResidentRunner {
     final bool rebuildBundle = assetBundle.needsBuild();
     if (rebuildBundle) {
       globals.printTrace('Updating assets');
-      final int result = await assetBundle.build(packagesPath: '.packages');
+      final int result = await assetBundle.build(
+        packagesPath: '.packages',
+        flavor: flavor,
+      );
       if (result != 0) {
         return UpdateFSReport();
       }
