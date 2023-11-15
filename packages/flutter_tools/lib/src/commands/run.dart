@@ -595,7 +595,6 @@ class RunCommand extends RunCommandBase {
         stayResident: stayResident,
         ipv6: ipv6 ?? false,
         multidexEnabled: boolArg('multidex'),
-        flavor: stringArg('flavor'),
         analytics: globals.analytics,
       );
     } else if (webMode) {

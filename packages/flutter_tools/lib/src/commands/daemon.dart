@@ -563,7 +563,6 @@ class AppDomain extends Domain {
         multidexEnabled: multidexEnabled,
         hostIsIde: true,
         machine: machine,
-        flavor: flavor,
         analytics: globals.analytics,
       );
     } else {
