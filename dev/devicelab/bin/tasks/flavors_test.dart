@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:convert';
 import 'dart:io' show File;
+import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:flutter_devicelab/framework/devices.dart';
@@ -12,6 +12,7 @@ import 'package:flutter_devicelab/framework/task_result.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
 import 'package:flutter_devicelab/tasks/integration_tests.dart';
 import 'package:path/path.dart' as path;
+import 'package:standard_message_codec/standard_message_codec.dart';
 
 Future<void> main() async {
   deviceOperatingSystem = DeviceOperatingSystem.android;
@@ -19,7 +20,7 @@ Future<void> main() async {
     await createFlavorsTest().call();
     await createIntegrationTestFlavorsTest().call();
 
-    final projectPath = '${flutterDirectory.path}/dev/integration_tests/flavors';
+    final String projectPath = '${flutterDirectory.path}/dev/integration_tests/flavors';
     final TaskResult installTestsResult = await inDirectory(
       projectPath,
       () async {
@@ -50,11 +51,14 @@ Future<TaskResult> _testInstallDebugPaidFlavor(String projectDir) async {
     options: <String>['--debug', '--flavor', 'paid'],
   );
 
-  final File assetManifest = File(
-    path.join(projectDir, 'build', 'app', 'intermediates', 'assets', 'paidDebug', 'flutter_assets', 'AssetManifest.json'),
-  );
-  final Map<String, Object?> assetManifestJson = jsonDecode(assetManifest.readAsStringSync()) as Map<String, Object?>;
-  if (assetManifestJson.containsKey('assets/free/free.txt')) {
+  final Uint8List assetManifestFileData = File(
+    path.join(projectDir, 'build', 'app', 'intermediates', 'assets', 'paidDebug', 'flutter_assets', 'AssetManifest.bin'),
+  ).readAsBytesSync();
+
+  final Map<Object?, Object?> assetManifest = const StandardMessageCodec()
+    .decodeMessage(ByteData.sublistView(assetManifestFileData)) as Map<Object?, Object?>;
+
+  if (assetManifest.containsKey('assets/free/free.txt')) {
     return TaskResult.failure('Assets declared with a flavor not equal to the '
       'argued --flavor value should not be bundled.');
   }
