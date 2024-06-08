@@ -464,13 +464,6 @@ class ApkManifestData {
       }
     }
 
-    // For checking if Target Activity is declared
-    Iterable<String?> activityNames = <String?>[];
-
-    if (isActivityAlias) {
-      activityNames = activities.map(_getActivityName);
-    }
-
     final _Attribute? package = manifest.firstAttribute('package');
     // "io.flutter.examples.hello_world" (Raw: "io.flutter.examples.hello_world")
     final String? packageName = package?.value?.substring(1, package.value?.indexOf('" '));
@@ -480,17 +473,14 @@ class ApkManifestData {
       return null;
     }
 
-    final _Attribute? nameAttribute = isActivityAlias ? launchActivity.firstAttribute('android:targetActivity') : launchActivity.firstAttribute('android:name');
-
+    final _Attribute? launchActivityNameAttribute = isActivityAlias ? launchActivity.firstAttribute('android:targetActivity') : launchActivity.firstAttribute('android:name');
     // "io.flutter.examples.hello_world.MainActivity" (Raw: "io.flutter.examples.hello_world.MainActivity")
-    final String? activityName = nameAttribute?.value?.substring(1, nameAttribute.value?.indexOf('" '));
+    final String? activityName = launchActivityNameAttribute?.value?.substring(1, launchActivityNameAttribute.value?.indexOf('" '));
 
-    // Checking if Target Activity is declared
-    if (isActivityAlias && activityName != null) {
-      if (!activityNames.contains(activityName)) {
-        logger.printError('Error running $packageName. Target activity not found');
-        return null;
-      }
+    final Iterable<String?> activityNames = activities.map(_getActivityName);
+    if (isActivityAlias && activityName != null && !activityNames.contains(activityName)) {
+      logger.printError('Error running $packageName. Target activity not found');
+      return null;
     }
 
     // Example format: (type 0x10)0x1
