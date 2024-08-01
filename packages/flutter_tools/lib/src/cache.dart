@@ -701,16 +701,26 @@ class Cache {
     if (!_lockEnabled) {
       return;
     }
-    for (final ArtifactSet artifact in _artifacts) {
-      if (!requiredArtifacts.contains(artifact.developmentArtifact)) {
-        _logger.printTrace('Artifact $artifact is not required, skipping update.');
+
+    final List<ArtifactSet> neededArtifacts = <ArtifactSet>[];
+
+    for (final ArtifactSet a in _artifacts) {
+      if (!requiredArtifacts.contains(a.developmentArtifact)) {
+        _logger.printTrace('Artifact $a is not required, skipping update.');
         continue;
       }
-      if (await artifact.isUpToDate(_fileSystem)) {
+
+      if (await a.isUpToDate(_fileSystem)) {
         continue;
       }
+      neededArtifacts.add(a);
+    }
+
+    for (final (int i, ArtifactSet artifact) in neededArtifacts.indexed) {
       try {
+        final Status progress = _logger.startProgress('Downloading artifacts for set ${artifact.name} (${i+1} of ${neededArtifacts.length})');
         await artifact.update(_artifactUpdater, _logger, _fileSystem, _osUtils, offline: offline);
+        progress.stop();
       } on SocketException catch (e) {
         if (_hostsBlockedInChina.contains(e.address?.host)) {
           _logger.printError(
@@ -1083,15 +1093,13 @@ class ArtifactUpdater {
     int retries = _kRetryCount;
 
     while (retries > 0) {
-      status = _logger.startProgress(
-        message,
-      );
+
       try {
         _ensureExists(tempFile.parent);
         if (tempFile.existsSync()) {
           tempFile.deleteSync();
         }
-        await _download(url, tempFile, status);
+        await _download(url, tempFile);
 
         if (!tempFile.existsSync()) {
           throw Exception('Did not find downloaded file ${tempFile.path}');
@@ -1121,7 +1129,6 @@ class ArtifactUpdater {
         // tool to crash.
         rethrow;
       } finally {
-        status.stop();
       }
       /// Unzipping multiple file into a directory will not remove old files
       /// from previous versions that are not present in the new bundle.
@@ -1175,7 +1182,7 @@ class ArtifactUpdater {
   ///
   /// See also:
   ///   * https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooghash
-  Future<void> _download(Uri url, File file, Status status) async {
+  Future<void> _download(Uri url, File file) async {
     final bool isAllowedUrl = _allowedBaseUrls.any((String baseUrl) => url.toString().startsWith(baseUrl));
 
     // In tests make this a hard failure.
@@ -1187,12 +1194,10 @@ class ArtifactUpdater {
 
     // In production, issue a warning but allow the download to proceed.
     if (!isAllowedUrl) {
-      status.pause();
       _logger.printWarning(
         'Downloading an artifact that may not be reachable in some environments (e.g. firewalled environments): $url\n'
         'This should not have happened. This is likely a Flutter SDK bug. Please file an issue at https://github.com/flutter/flutter/issues/new?template=1_activation.yml'
       );
-      status.resume();
     }
 
     final HttpClientRequest request = await _httpClient.getUrl(url);
