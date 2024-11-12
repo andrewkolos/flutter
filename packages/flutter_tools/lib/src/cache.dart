@@ -711,14 +711,25 @@ class Cache {
     if (!_lockEnabled) {
       return;
     }
-    for (final ArtifactSet artifact in _artifacts) {
-      if (!requiredArtifacts.contains(artifact.developmentArtifact)) {
-        _logger.printTrace('Artifact $artifact is not required, skipping update.');
-        continue;
+
+    final List<ArtifactSet> outOfDateArtifacts = await (() async {
+      final List<ArtifactSet> result = <ArtifactSet>[];
+
+      for (final ArtifactSet a in _artifacts) {
+        if (!requiredArtifacts.contains(a.developmentArtifact)) {
+          _logger.printTrace('Artifact $a is not required, skipping update.');
+          continue;
+        }
+        if (await a.isUpToDate(_fileSystem)) {
+          continue;
+        }
+        result.add(a);
       }
-      if (await artifact.isUpToDate(_fileSystem)) {
-        continue;
-      }
+
+      return result.toList();
+    })();
+
+    for (final ArtifactSet artifact in outOfDateArtifacts) {
       try {
         await artifact.update(_artifactUpdater, _logger, _fileSystem, _osUtils, offline: offline);
       } on SocketException catch (e) {
@@ -789,12 +800,61 @@ abstract class ArtifactSet {
     {bool offline = false}
   );
 
+
   /// The canonical name of the artifact.
   String get name;
 
   // The name of the stamp file. Defaults to the same as the
   // artifact name.
   String get stampName => name;
+}
+
+final class ArtifactUpdater {
+  ArtifactUpdater({
+    required List<ArtifactUpdateTask> steps,
+    required Logger logger,
+  })  : _tasks = steps,
+        _logger = logger;
+
+  final List<ArtifactUpdateTask> _tasks;
+  final dynamic _logger;
+
+  Future<void> run() async {
+    final int numberOfSteps = _tasks.fold(0, (int total, ArtifactUpdateTask task) {
+      return total + task.subStepCount;
+    });
+    //final dynamic progressableStatus = _logger.startProgressable('Updating artifacts:', numberOfSteps);
+    for (final ArtifactUpdateTask task in _tasks) {
+      await task.run(null);
+    }
+  }
+}
+
+final class ArtifactUpdateTask {
+  ArtifactUpdateTask({
+    required String description,
+    required List<ArtifactUpdateSubStep> steps,
+  }) : _description = description, _substeps = steps;
+
+  final String _description;
+  int get subStepCount => _substeps.length;
+
+  final List<ArtifactUpdateSubStep> _substeps;
+
+  Future<void> run(dynamic progressableStatus) async {
+    for (final ArtifactUpdateSubStep step in _substeps) {
+      // progressableStatus.progress('Updating artifacts: (task: $_description) (step: $step)...');
+      print('Updating artifacts: (task: $_description) (step: $step)...');
+      await step.run();
+    }
+  }
+}
+
+final class ArtifactUpdateSubStep {
+  ArtifactUpdateSubStep({required this.description, required this.run});
+
+  final String description;
+  final Future<void> Function() run;
 }
 
 /// An artifact set managed by the cache.
